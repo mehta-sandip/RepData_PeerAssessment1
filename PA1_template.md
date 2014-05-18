@@ -26,80 +26,142 @@ The dataset is stored in a comma-separated-value (CSV) file and there are a tota
 ## Loading and preprocessing the data
 Read the data using read.csv() and transform "date" column to DateTime class. Creating data table from csv data.
 
-``` {r readData}
+
+```r
 activityRawData = read.csv("activity.csv")
-activityRawData$date = as.Date(activityRawData$date,"%Y-%m-%d")
+activityRawData$date = as.Date(activityRawData$date, "%Y-%m-%d")
 
 library(data.table)
 activityRawData = data.table(activityRawData)
 ```
 
+
 ## What is mean total number of steps taken per day?
 Removing incomplete cases and then counting mean total number of steps taken per day
 
-``` {r computing_mean_daily_steps}
-activityData = activityRawData[complete.cases(activityRawData),]
-dailyStepsAggData = aggregate(activityData$steps,by=list(Category=activityData$date),FUN=sum)
-names(dailyStepsAggData) = c("date","dailySteps")
+
+```r
+activityData = activityRawData[complete.cases(activityRawData), ]
+dailyStepsAggData = aggregate(activityData$steps, by = list(Category = activityData$date), 
+    FUN = sum)
+names(dailyStepsAggData) = c("date", "dailySteps")
 ```
+
 
 Make a histogram of the total number of steps taken each day
 
-``` {r dailyStepsDiagram,fig.width=6, fig.height=5}
+
+```r
 library(ggplot2, quietly = TRUE)
-ggplot(dailyStepsAggData,aes(x=date,y=dailySteps)) + geom_bar(stat = "identity")
+ggplot(dailyStepsAggData, aes(x = date, y = dailySteps)) + geom_bar(stat = "identity")
 ```
+
+![plot of chunk dailyStepsDiagram](figure/dailyStepsDiagram.png) 
+
 
 Calculate and report the mean and median total number of steps taken per day
 
-``` {r mean_medial_steps}
-mean(dailyStepsAggData$dailySteps,na.rm=TRUE)
-median(dailyStepsAggData$dailySteps,na.rm=TRUE)
+
+```r
+mean(dailyStepsAggData$dailySteps, na.rm = TRUE)
 ```
+
+```
+## [1] 10766
+```
+
+```r
+median(dailyStepsAggData$dailySteps, na.rm = TRUE)
+```
+
+```
+## [1] 10765
+```
+
 
 ## What is the average daily activity pattern?
 
-```{r compute_daily_activity}
-dailyActivityAggData = activityData[complete.cases(activityData),list(pattern=mean(steps)),by = interval]
+
+```r
+dailyActivityAggData = activityData[complete.cases(activityData), list(pattern = mean(steps)), 
+    by = interval]
 ```
+
 
 Make a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
 
-``` {r time_series_plot}
-ggplot(dailyActivityAggData,aes(x=interval,y=pattern)) + geom_line()
+
+```r
+ggplot(dailyActivityAggData, aes(x = interval, y = pattern)) + geom_line()
 ```
+
+![plot of chunk time_series_plot](figure/time_series_plot.png) 
+
 
 Get 5-minute interval which contains the maximum number of steps
 
-``` {r get_max_stpes_for_internval}
+
+```r
 dailyActivityAggData$interval[which.max(dailyActivityAggData$pattern)]
 ```
+
+```
+## [1] 835
+```
+
 
 ## Imputing missing values
 
 Calculate and report the total number of missing values in the dataset
 
-```{r counting_na}
+
+```r
 sum(!complete.cases(activityRawData))
 ```
+
+```
+## [1] 2304
+```
+
 
 Steps is the only variable which has missing values in it.I have decided to use mean for the 5 minute interval.
 In order to keep the original data intact, I have decided to copy the original data set and then fill the missing
 values in copied data set.
 
-```{r fill_missing_data}
+
+```r
 fillNAData = copy(activityRawData)
-fillNAData = fillNAData[,fillNASteps := ifelse(is.na(steps), mean(steps, na.rm=TRUE), steps),by = interval ]
+fillNAData = fillNAData[, `:=`(fillNASteps, ifelse(is.na(steps), mean(steps, 
+    na.rm = TRUE), steps)), by = interval]
 ```
+
 
 Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day
 
-``` {r na_fill_steps_histogram,fig.width=6, fig.height=5}
-naFillTotalSteps = fillNAData[,list(dailySteps = sum(fillNASteps)),by=date]
-ggplot(naFillTotalSteps,aes(x=date,y=dailySteps)) + geom_bar(stat = "identity")
+
+```r
+naFillTotalSteps = fillNAData[, list(dailySteps = sum(fillNASteps)), by = date]
+ggplot(naFillTotalSteps, aes(x = date, y = dailySteps)) + geom_bar(stat = "identity")
+```
+
+![plot of chunk na_fill_steps_histogram](figure/na_fill_steps_histogram.png) 
+
+```r
 mean(naFillTotalSteps$dailySteps)
+```
+
+```
+## [1] 10766
+```
+
+```r
 median(naFillTotalSteps$dailySteps)
 ```
+
+```
+## [1] 10766
+```
+
 
 The mean of daily steps is unchanged,however, the median is different. This is expected as I fill the missing values
 with mean activity in each interval.
@@ -108,13 +170,39 @@ with mean activity in each interval.
 
 Create a new factor variable in the dataset with two levels ??? ???weekday??? and ???weekend??? indicating whether a given date is a weekday or weekend day
 
-```{r fill_weekday}
-fillNAData[,is.weekday := ifelse(weekdays(date) %in% c("Sunday","Saturday"), "Weekend","Weekday")]
-fillNAData = fillNAData[,list(pattern=mean(fillNASteps)),by=list(interval,is.weekday)]
+
+```r
+fillNAData[, `:=`(is.weekday, ifelse(weekdays(date) %in% c("Sunday", "Saturday"), 
+    "Weekend", "Weekday"))]
 ```
+
+```
+##        steps       date interval fillNASteps is.weekday
+##     1:    NA 2012-10-01        0     1.71698    Weekday
+##     2:    NA 2012-10-01        5     0.33962    Weekday
+##     3:    NA 2012-10-01       10     0.13208    Weekday
+##     4:    NA 2012-10-01       15     0.15094    Weekday
+##     5:    NA 2012-10-01       20     0.07547    Weekday
+##    ---                                                 
+## 17564:    NA 2012-11-30     2335     4.69811    Weekday
+## 17565:    NA 2012-11-30     2340     3.30189    Weekday
+## 17566:    NA 2012-11-30     2345     0.64151    Weekday
+## 17567:    NA 2012-11-30     2350     0.22642    Weekday
+## 17568:    NA 2012-11-30     2355     1.07547    Weekday
+```
+
+```r
+fillNAData = fillNAData[, list(pattern = mean(fillNASteps)), by = list(interval, 
+    is.weekday)]
+```
+
 
 Make two separate activity pattern plot for weekday and weekend.
 
-``` {r activity_pattern_weekday_weekend}
-ggplot(fillNAData,aes(x=interval,y=pattern)) + geom_line() + facet_wrap(~is.weekday)
+
+```r
+ggplot(fillNAData, aes(x = interval, y = pattern)) + geom_line() + facet_wrap(~is.weekday)
 ```
+
+![plot of chunk activity_pattern_weekday_weekend](figure/activity_pattern_weekday_weekend.png) 
+
